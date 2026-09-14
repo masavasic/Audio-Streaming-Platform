@@ -1,0 +1,25 @@
+mesta:
+1, 18
+
+korisnici:
+2, 3, 4,19,24
+
+kategorije:
+5,20,22
+
+audiosnimci:
+6, 7, 8,21,17
+
+paketi:
+9,10,11,23
+
+
+slusanja:
+12,25
+
+ocene:
+14, 15, 16,26
+
+omiljeni:
+13, 27
+

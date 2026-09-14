@@ -1,0 +1,880 @@
+ 
+    //2.Kreiranje korisnika
+     @POST
+    @Path("korisnik/{ime}/{email}/{godiste}/{polStr}/{mesto}")
+    @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
+    public Response kreirajKorisnika(
+        @PathParam("ime") String ime,
+        @PathParam("email") String email,
+        @PathParam("godiste") int godiste,
+        @PathParam("polStr") String polStr,
+        @PathParam("mesto") String mesto) {
+
+        try {
+            JMSContext context = connectionFactory.createContext();
+            JMSConsumer consumer = context.createConsumer(queueOdgovor);
+            JMSProducer producer = context.createProducer();
+            
+            TextMessage txtMsg = context.createTextMessage();
+            txtMsg.setIntProperty("zahtev", 2);
+            txtMsg.setStringProperty("ime", ime);
+            txtMsg.setStringProperty("email", email);
+            txtMsg.setIntProperty("godiste", godiste);
+            txtMsg.setStringProperty("polStr", polStr);
+            txtMsg.setStringProperty("mesto", mesto);
+            producer.send(queueZahtev, txtMsg);
+            
+            String odgovor = ((TextMessage) consumer.receive()).getText();
+            
+            /*
+            if (polStr.length() != 1) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Pol mora biti jedan karakter.").build();
+            }
+            char pol = polStr.charAt(0);
+            
+            boolean postoji = !em.createQuery("SELECT k FROM Korisnik k WHERE k.email = :email", Korisnik.class)
+            .setParameter("email", email)
+            .getResultList()
+            .isEmpty();
+            if (postoji) {
+            return Response.status(Response.Status.CONFLICT).entity("Korisnik sa ovim emailom već postoji.").build();
+            }
+            
+            Mesto grad = em.createQuery("SELECT m FROM Mesto m where m.naziv = :naziv", Mesto.class)
+            .setParameter("naziv", mesto).getResultList().get(0);
+            
+            
+            Korisnik korisnik = new Korisnik();
+            korisnik.setIme(ime);
+            korisnik.setEmail(email);
+            korisnik.setGodiste(godiste);
+            korisnik.setPol(pol);
+            korisnik.setIdMes(grad);*/
+            return Response.status(Response.Status.CREATED).entity(odgovor).build();
+        } catch (JMSException ex) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Greska").build();
+        }
+    }
+    
+    //3. Promena email adrese za korisnika
+    @PUT
+    @Path("promeniEmail/{IdKor}/{email}")
+    @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
+    public Response promeniEmail(@PathParam("IdKor") int IdKor, @PathParam("email") String email){
+        try {
+            JMSContext context = connectionFactory.createContext();
+            JMSConsumer consumer = context.createConsumer(queueOdgovor);
+            JMSProducer producer = context.createProducer();
+            TextMessage txtMsg = context.createTextMessage();
+            txtMsg.setIntProperty("zahtev", 3);
+            txtMsg.setIntProperty("IdKor", IdKor);
+            txtMsg.setStringProperty("email", email);
+            producer.send(queueZahtev, txtMsg);
+            
+            String odgovor = ((TextMessage) consumer.receive()).getText();
+            /* Korisnik korisnik = em.find(Korisnik.class, IdKor);
+            if(korisnik == null){
+            return Response.status(Response.Status.NOT_FOUND).entity("Korisnik ne postoji").build();
+            }
+            korisnik.setEmail(email);*/
+            return Response.status(Response.Status.OK).entity(odgovor).build();
+        } catch (JMSException ex) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Greska").build();
+        }
+    }
+    
+    //4.Promena mesta za korisnika
+    @PUT
+    @Path("korisnik/{IdKor}/{IdMes}")
+    @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
+    public Response promeniMesto(@PathParam("IdKor") int IdKor, @PathParam("IdMes") int IdMes) {
+        try {
+            JMSContext context = connectionFactory.createContext();
+            JMSConsumer consumer = context.createConsumer(queueOdgovor);
+            JMSProducer producer = context.createProducer();
+            TextMessage txtMsg = context.createTextMessage();
+            txtMsg.setIntProperty("zahtev", 4);
+            txtMsg.setIntProperty("IdKor", IdKor);
+            txtMsg.setIntProperty("IdMes", IdMes);
+            producer.send(queueZahtev, txtMsg);
+            
+            String odgovor = ((TextMessage) consumer.receive()).getText();
+            /*Korisnik korisnik = em.find(Korisnik.class, IdKor);
+            if (korisnik == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+            .entity("Korisnik ne postoji")
+            .build();
+            }
+            
+            Mesto mesto = em.find(Mesto.class, IdMes);
+            if (mesto == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+            .entity("Mesto ne postoji")
+            .build();
+            }
+            
+            korisnik.setIdMes(mesto);
+            em.merge(korisnik); // Ovaj poziv je neophodan za čuvanje promena u bazi*/
+            return Response.status(Response.Status.OK).entity(odgovor).build();
+        } catch (JMSException ex) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Greska").build();
+        }
+    }
+    
+    //5.Kreiranje kategorije
+    @POST
+    @Path("kategorija/{naziv}")
+    @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
+    public Response kreirajKategoriju(@PathParam("naziv") String naziv){
+        try {
+            JMSContext context = connectionFactory.createContext();
+            JMSConsumer consumer = context.createConsumer(queueOdgovor);
+            JMSProducer producer = context.createProducer();
+            TextMessage txtMsg = context.createTextMessage();
+            txtMsg.setIntProperty("zahtev", 5);
+            txtMsg.setStringProperty("naziv", naziv);
+            
+            producer.send(queueZahtev, txtMsg);
+            
+            String odgovor = ((TextMessage) consumer.receive()).getText();
+            /*
+            Kategorija kategorija = new Kategorija();
+            kategorija.setNaziv(naziv);*/
+            return Response.status(Response.Status.CREATED).entity(odgovor).build();
+        } catch (JMSException ex) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Greska").build();
+        }
+    }
+    
+    //6.Kreiranje audio snimka
+    @POST
+    @Path("audiosnimak/{naziv}/{trajanjeStr}/{datumvremeStr}/{idkor}")
+    @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
+    public Response kreirajAudioSnimak(@PathParam("naziv") String naziv, @PathParam("trajanjeStr") String trajanjeStr, @PathParam("datumvremeStr") String datumvremeStr, @PathParam("idkor") int idkor){
+        try {
+            JMSContext context = connectionFactory.createContext();
+            JMSConsumer consumer = context.createConsumer(queueOdgovor);
+            JMSProducer producer = context.createProducer();
+            TextMessage txtMsg = context.createTextMessage();
+            txtMsg.setIntProperty("zahtev", 6);
+            txtMsg.setStringProperty("naziv", naziv);
+            txtMsg.setStringProperty("trajanjeStr", trajanjeStr);
+            txtMsg.setStringProperty("datumvremeStr", datumvremeStr);
+            txtMsg.setIntProperty("IdKor", idkor);
+            producer.send(queueZahtev, txtMsg);
+            
+            String odgovor = ((TextMessage) consumer.receive()).getText();
+            /*Time trajanje = Time.valueOf(trajanjeStr); // Format: HH:mm:ss
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
+            LocalDateTime localDateTime = LocalDateTime.parse(datumvremeStr, formatter);
+            Timestamp datumvreme = Timestamp.valueOf(localDateTime);
+            
+            Korisnik vlasnik = em.createNamedQuery("Korisnik.findByIdKor",Korisnik.class).setParameter("idKor", idkor).getSingleResult();
+            
+            Audiosnimak audiosnimak = new Audiosnimak();
+            audiosnimak.setNaziv(naziv);
+            audiosnimak.setTrajanje(trajanje);
+            audiosnimak.setDatumVreme(datumvreme);
+            audiosnimak.setIdVlasnika(vlasnik);*/
+            return Response.status(Response.Status.CREATED).entity(odgovor).build();
+        } catch (JMSException ex) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Greska").build();
+        }
+    }
+    
+    //7.Promena naziva audio snimka
+    @PUT
+    @Path("audiosnimak/{idAud}/{naziv}")
+    @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
+    public Response promeniNazivAudioSnimka(@PathParam("idAud") int idAud, @PathParam("naziv") String naziv){
+        try {
+            JMSContext context = connectionFactory.createContext();
+            JMSConsumer consumer = context.createConsumer(queueOdgovor);
+            JMSProducer producer = context.createProducer();
+            TextMessage txtMsg = context.createTextMessage();
+            txtMsg.setIntProperty("zahtev", 7);
+            txtMsg.setStringProperty("naziv", naziv);
+            txtMsg.setIntProperty("IdAud", idAud);
+            producer.send(queueZahtev, txtMsg);
+            
+            String odgovor = ((TextMessage) consumer.receive()).getText();
+            /*Audiosnimak audiosnimak = em.find(Audiosnimak.class, idAud);
+            if(audiosnimak==null){
+            return Response.status(Response.Status.NOT_FOUND).entity("Ne postoji audiosnimak sa datim id-em.").build();
+            }
+            audiosnimak.setNaziv(naziv);*/
+            return Response.status(Response.Status.OK).entity(odgovor).build();
+        } catch (JMSException ex) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Greska").build();
+        }
+    }
+    
+    //8. Dodavanje kategorije audio snimku
+    @POST
+    @Path("audiosnimak/{idAud}/{idKat}")
+    @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
+    public Response dodajKategorijuAudioSnimku(@PathParam("idAud") int idAud, @PathParam("idKat") int idKat){
+         try {
+            JMSContext context = connectionFactory.createContext();
+            JMSConsumer consumer = context.createConsumer(queueOdgovor);
+            JMSProducer producer = context.createProducer();
+            TextMessage txtMsg = context.createTextMessage();
+            txtMsg.setIntProperty("zahtev", 8);
+            txtMsg.setIntProperty("IdKat", idKat);
+            txtMsg.setIntProperty("IdAud", idAud);
+            producer.send(queueZahtev, txtMsg);
+            
+            String odgovor = ((TextMessage) consumer.receive()).getText();
+            /*
+            Audiosnimak audiosnimak = em.find(Audiosnimak.class, idAud);
+            if (audiosnimak == null) {
+                return Response.status(Response.Status.NOT_FOUND).entity("Ne postoji audio snimak").build();
+            }
+            
+             Kategorija kategorija = em.find(Kategorija.class, idKat);
+            if (kategorija == null) {
+                return Response.status(Response.Status.NOT_FOUND).entity("Ne postoji kategorija").build();
+            }
+            //ovde mozes da proveris da li postoji vec u pripada
+            Pripada pripada = new Pripada();
+            pripada.setIdAudSni(audiosnimak);
+            pripada.setIdKat(kategorija);*/
+            
+            return Response.status(Response.Status.OK).entity(odgovor).build();
+        } catch (JMSException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Greska").build();
+        }
+    }
+    
+    //9. Kreiranje paketa
+    @POST
+    @Path("paket/{cena}/{naziv}")
+    @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
+    public Response kreirajPaket(@PathParam("cena") double cena, @PathParam("naziv") String naziv){
+        try {
+            JMSContext context = connectionFactory.createContext();
+            JMSConsumer consumer = context.createConsumer(queueOdgovor);
+            JMSProducer producer = context.createProducer();
+            TextMessage txtMsg = context.createTextMessage();
+            txtMsg.setIntProperty("zahtev", 9);
+            txtMsg.setDoubleProperty("cena", cena);
+            txtMsg.setStringProperty("naziv", naziv);
+            producer.send(queueZahtev, txtMsg);
+            
+            String odgovor = ((TextMessage) consumer.receive()).getText();
+            
+            return Response.status(Response.Status.OK).entity(odgovor).build();
+        } catch (JMSException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Greska").build();
+        }
+        /*
+        Paket paket = new Paket();
+        paket.setCena(cena);
+        paket.setNaziv(naziv);*/
+        
+    }
+    
+    //10. Promena mesecne cene za paket
+    @PUT
+    @Path("paket/{idPak}/{cena}")
+    @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
+    public Response promeniCenuPaketa(@PathParam("idPak") int idPak, @PathParam("cena") double cena){
+        try {
+            JMSContext context = connectionFactory.createContext();
+            JMSConsumer consumer = context.createConsumer(queueOdgovor);
+            JMSProducer producer = context.createProducer();
+            TextMessage txtMsg = context.createTextMessage();
+            txtMsg.setIntProperty("zahtev", 10);
+            txtMsg.setIntProperty("IdPak", idPak);
+            txtMsg.setDoubleProperty("cena", cena);
+            producer.send(queueZahtev, txtMsg);
+            
+            String odgovor = ((TextMessage) consumer.receive()).getText();
+            
+            return Response.status(Response.Status.OK).entity(odgovor).build();
+        } catch (JMSException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Greska").build();
+        }
+       /* Paket paket = em.createNamedQuery("Paket.findByIdPak",Paket.class).setParameter("idPak", idPak).getSingleResult();
+        if(paket==null){
+            return Response.status(Response.Status.NOT_FOUND).entity("Paket ne postoji.").build();
+        }
+        paket.setCena(cena);
+       return Response.status(Response.Status.OK).entity("Cena paketa je promenjena.").build();*/
+    }
+    
+    //11. Kreiranje pretplate korisnika na paket
+    @POST 
+    @Path("paket/{datumvreme}/{cena}/{idkor}/{idpak}")
+    @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
+    public Response kreirajPretplatu(@PathParam("datumvreme") String datumvremeStr, @PathParam("cena") double cena, @PathParam("idkor") int idkor, @PathParam("idpak") int idpak){
+        try {
+            JMSContext context = connectionFactory.createContext();
+            JMSConsumer consumer = context.createConsumer(queueOdgovor);
+            JMSProducer producer = context.createProducer();
+            TextMessage txtMsg = context.createTextMessage();
+            txtMsg.setIntProperty("zahtev", 11);
+            txtMsg.setStringProperty("datumvremeStr", datumvremeStr);
+            txtMsg.setDoubleProperty("cena", cena);
+            txtMsg.setIntProperty("IdKor", idkor);
+            txtMsg.setIntProperty("IdPak", idpak);
+            producer.send(queueZahtev, txtMsg);
+            
+            String odgovor = ((TextMessage) consumer.receive()).getText();
+            
+            return Response.status(Response.Status.OK).entity(odgovor).build();
+        } catch (JMSException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Greska").build();
+        }
+        /*
+        Korisnik korisnik = em.find(Korisnik.class, idkor);
+        if(korisnik==null){
+            return Response.status(Response.Status.NOT_FOUND).entity("Korisnik nije pronadjen.").build();
+        }
+        Paket paket = em.find(Paket.class, idpak);
+        if(paket==null){
+            return Response.status(Response.Status.NOT_FOUND).entity("Paket nije pronadjen.").build();
+        }
+        
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
+        LocalDateTime localDateTime = LocalDateTime.parse(datumvremeStr, formatter);
+        Timestamp datumvreme = Timestamp.valueOf(localDateTime);
+        
+        Pretplata pretplata = new Pretplata();
+        pretplata.setDatumVreme(datumvreme);
+        pretplata.setCena(cena);
+        pretplata.setIdKor(korisnik);
+        pretplata.setIdPak(paket);
+        return Response.status(Response.Status.CREATED).entity("Pretplata je kreirana.").build();*/
+    }
+    
+    //12. Kreiranje slušanja audio snimka od strane korisnika
+    @POST
+    @Path("slusanje/{datumvreme}/{sek1}/{sek2}/{idkor}/{idaud}")
+    @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
+    public Response kreirajSlusanje(@PathParam("datumvreme") String datumvremeStr, @PathParam("sek1") int sek1, @PathParam("sek2")int sek2, @PathParam("idkor") int idkor, @PathParam("idaud") int idaud){
+        try {
+            JMSContext context = connectionFactory.createContext();
+            JMSConsumer consumer = context.createConsumer(queueOdgovor);
+            JMSProducer producer = context.createProducer();
+            TextMessage txtMsg = context.createTextMessage();
+            txtMsg.setIntProperty("zahtev", 12);
+            txtMsg.setStringProperty("datumvremeStr", datumvremeStr);
+            txtMsg.setIntProperty("Sek1", sek1);
+            txtMsg.setIntProperty("Sek2", sek2);
+            txtMsg.setIntProperty("IdKor", idkor);
+            txtMsg.setIntProperty("IdAud", idaud);
+            producer.send(queueZahtev, txtMsg);
+            
+            String odgovor = ((TextMessage) consumer.receive()).getText();
+            
+            return Response.status(Response.Status.OK).entity(odgovor).build();
+        } catch (JMSException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Greska").build();
+        }
+       /* Korisnik korisnik = em.find(Korisnik.class, idkor);
+        if(korisnik==null){
+            return Response.status(Response.Status.NOT_FOUND).entity("Korisnik nije pronadjen.").build();
+        }
+        Audiosnimak audiosnimak = em.find(Audiosnimak.class, idaud);
+        if(audiosnimak==null){
+            return Response.status(Response.Status.NOT_FOUND).entity("Audio snimak nije pronadjen.").build();
+        }
+        
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
+        LocalDateTime localDateTime = LocalDateTime.parse(datumvremeStr, formatter);
+        Timestamp datumvreme = Timestamp.valueOf(localDateTime);
+       
+        Slusanje slusanje = new Slusanje();
+        slusanje.setDatumVreme(datumvreme);
+        slusanje.setSekundZapoceto(sek1);
+        slusanje.setSekundOdslusano(sek2);
+        slusanje.setIdKor(korisnik);
+        slusanje.setIdSlu(idaud);
+        return Response.status(Response.Status.CREATED).entity("Slusanje je kreirano.").build();*/
+    }
+    
+     //13. . Dodavanje audio snimka u omiljene od strane korisnika
+     @POST
+     @Path("omiljeni/{idkor}/{idaud}")
+     @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
+     public Response dodajUOmiljene(@PathParam("idkor") int idkor, @PathParam("idaud") int idaud){
+        try {
+            JMSContext context = connectionFactory.createContext();
+            JMSConsumer consumer = context.createConsumer(queueOdgovor);
+            JMSProducer producer = context.createProducer();
+            TextMessage txtMsg = context.createTextMessage();
+            txtMsg.setIntProperty("zahtev", 13);
+            txtMsg.setIntProperty("IdKor", idkor);
+            txtMsg.setIntProperty("IdAud", idaud);
+            producer.send(queueZahtev, txtMsg);
+            
+            String odgovor = ((TextMessage) consumer.receive()).getText();
+            
+            return Response.status(Response.Status.OK).entity(odgovor).build();
+        } catch (JMSException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Greska").build();
+        }
+        /* Korisnik korisnik = em.find(Korisnik.class, idkor);
+        if(korisnik==null){
+            return Response.status(Response.Status.NOT_FOUND).entity("Korisnik nije pronadjen.").build();
+        }
+        Audiosnimak audiosnimak = em.find(Audiosnimak.class, idaud);
+        if(audiosnimak==null){
+            return Response.status(Response.Status.NOT_FOUND).entity("Audio snimak nije pronadjen.").build();
+        }
+        
+         Omiljenisnimak omiljeni = new Omiljenisnimak();
+         omiljeni.setIdAudSni(audiosnimak);
+         omiljeni.setIdKor(korisnik);
+         return Response.status(Response.Status.CREATED).entity("Audio snimak je dodat u omiljene za korisnika.").build();*/
+     }
+     
+     //14. Kreiranje ocene korisnika za audio snimak
+    @POST
+    @Path("ocena/{ocena}/{datumvreme}/{idkor}/{idaud}")
+    @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
+     public Response kreirajOcenu(@PathParam("ocena") int o,@PathParam("datumvreme") String datumvremeStr, @PathParam("idkor") int idkor, @PathParam("idaud") int idaud){
+        try {
+            JMSContext context = connectionFactory.createContext();
+            JMSConsumer consumer = context.createConsumer(queueOdgovor);
+            JMSProducer producer = context.createProducer();
+            TextMessage txtMsg = context.createTextMessage();
+            txtMsg.setIntProperty("zahtev", 14);
+            txtMsg.setIntProperty("ocena", o);
+            txtMsg.setStringProperty("datumvremeStr", datumvremeStr);
+            txtMsg.setIntProperty("IdKor", idkor);
+            txtMsg.setIntProperty("IdAud", idaud);
+            producer.send(queueZahtev, txtMsg);
+            
+            String odgovor = ((TextMessage) consumer.receive()).getText();
+            
+            return Response.status(Response.Status.OK).entity(odgovor).build();
+        } catch (JMSException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Greska").build();
+        }
+       /* if(o<1 || o>5){
+             return Response.status(Response.Status.BAD_REQUEST).entity("Vrednost ocene nije ispravna").build();
+        }
+        Korisnik korisnik = em.find(Korisnik.class, idkor);
+        if(korisnik==null){
+            return Response.status(Response.Status.NOT_FOUND).entity("Korisnik nije pronadjen.").build();
+        }
+        Audiosnimak audiosnimak = em.find(Audiosnimak.class, idaud);
+        if(audiosnimak==null){
+            return Response.status(Response.Status.NOT_FOUND).entity("Audio snimak nije pronadjen.").build();
+        }
+        
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
+        LocalDateTime localDateTime = LocalDateTime.parse(datumvremeStr, formatter);
+        Timestamp datumvreme = Timestamp.valueOf(localDateTime);
+       
+        Ocena ocena = new Ocena();
+        ocena.setOcena(o);
+        ocena.setDatumVreme(datumvreme);
+        ocena.setIdAudSni(audiosnimak);
+        ocena.setIdKor(korisnik);
+        
+        return Response.status(Response.Status.CREATED).entity("Ocena je kreirana.").build*/
+    }
+     
+    //15. Menjanje ocene korisnika za audio snimak
+     @PUT
+    @Path("ocena/{o}/{idkor}/{idaud}")
+    @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
+    public Response promeniOcenu(@PathParam("o") int o, @PathParam("idkor") int idkor, @PathParam("idaud") int idaud) {
+        try {
+            JMSContext context = connectionFactory.createContext();
+            JMSConsumer consumer = context.createConsumer(queueOdgovor);
+            JMSProducer producer = context.createProducer();
+            TextMessage txtMsg = context.createTextMessage();
+            txtMsg.setIntProperty("zahtev", 15);
+            txtMsg.setIntProperty("ocena", o);
+            txtMsg.setIntProperty("IdKor", idkor);
+            txtMsg.setIntProperty("IdAud", idaud);
+            producer.send(queueZahtev, txtMsg);
+            
+            String odgovor = ((TextMessage) consumer.receive()).getText();
+            
+            return Response.status(Response.Status.OK).entity(odgovor).build();
+        } catch (JMSException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Greska").build();
+        }
+       /*
+
+        Korisnik korisnik = em.find(Korisnik.class, idkor);
+        if (korisnik == null) {
+            return Response.status(Response.Status.NOT_FOUND).entity("Korisnik nije pronađen.").build();
+        }
+
+        Audiosnimak audiosnimak = em.find(Audiosnimak.class, idaud);
+        if (audiosnimak == null) {
+            return Response.status(Response.Status.NOT_FOUND).entity("Audio snimak nije pronađen.").build();
+        }
+
+       
+        List<Ocena> rezultati = em.createQuery("SELECT o FROM Ocena o WHERE o.idKor.idKor = :idkor AND o.idAudSni.idAudSni = :idaud", Ocena.class).setParameter("idkor", idkor).setParameter("idaud", idaud).getResultList();
+
+        if (rezultati.isEmpty()) {
+            return Response.status(Response.Status.NOT_FOUND).entity("Ocena za korisnika i audio snimak ne postoji").build();
+        }
+
+        Ocena ocena = rezultati.get(0);
+        ocena.setOcena(o);
+
+        return Response.status(Response.Status.OK).entity("Ocena je izmenjena.").build();*/
+    }
+    
+    //16. Brisanje ocene korisnika za audio snimak
+    @DELETE
+    @Path("ocena/{idkor}/{idaud}")
+    @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
+    public Response obrisiOcenu(@PathParam("idkor") int idkor, @PathParam("idaud") int idaud) {
+        try {
+            JMSContext context = connectionFactory.createContext();
+            JMSConsumer consumer = context.createConsumer(queueOdgovor);
+            JMSProducer producer = context.createProducer();
+            TextMessage txtMsg = context.createTextMessage();
+            txtMsg.setIntProperty("zahtev", 16);
+            txtMsg.setIntProperty("IdKor", idkor);
+            txtMsg.setIntProperty("IdAud", idaud);
+            producer.send(queueZahtev, txtMsg);
+            
+            String odgovor = ((TextMessage) consumer.receive()).getText();
+            
+            return Response.status(Response.Status.OK).entity(odgovor).build();
+        } catch (JMSException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Greska").build();
+        }
+       /* try {
+            
+            // Pronađi ocenu za korisnika i audio snimak
+            List<Ocena> rezultati = em.createQuery("SELECT o FROM Ocena o WHERE o.idKor.idKor = :idkor AND o.idAudSni.idAudSni = :idaud", Ocena.class).setParameter("idkor", idkor).setParameter("idaud", idaud).getResultList();
+
+            if (rezultati.isEmpty()) {
+                return Response.status(Response.Status.NOT_FOUND).entity("Ocena za korisnika i audio snimak ne postoji").build();
+            }
+
+            Ocena ocena = rezultati.get(0);
+
+            return Response.status(Response.Status.OK).entity("Ocena je obrisana.").build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("Došlo je do greške prilikom brisanja ocene.").build();
+        }*/
+    }
+    
+    //17. Brisanje audio snimka od strane korisnika koji ga je kreirao
+    @DELETE
+    @Path("audiosnimak/{idaud}/{idkor}")
+    @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
+    public Response obrisiAudioSnimak(@PathParam("idaud") int idaud, @PathParam("idkor") int idkor){
+        try {
+            JMSContext context = connectionFactory.createContext();
+            JMSConsumer consumer = context.createConsumer(queueOdgovor);
+            JMSProducer producer = context.createProducer();
+            TextMessage txtMsg = context.createTextMessage();
+            txtMsg.setIntProperty("zahtev", 17);
+            txtMsg.setIntProperty("IdKor", idkor);
+            txtMsg.setIntProperty("IdAud", idaud);
+            producer.send(queueZahtev, txtMsg);
+            
+            String odgovor = ((TextMessage) consumer.receive()).getText();
+            
+            return Response.status(Response.Status.OK).entity(odgovor).build();
+        } catch (JMSException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Greska").build();
+        }
+       /* Audiosnimak audiosnimak = em.find(Audiosnimak.class, idaud);
+        Korisnik korisnik = em.find(Korisnik.class, idkor);
+        if(!audiosnimak.getIdVlasnika().equals(korisnik)){
+            return Response.status(Response.Status.BAD_REQUEST).entity("Korisnik nije vlasnik audio snimka").build();
+        }
+        em.remove(audiosnimak);//treba skloniti
+        return Response.status(Response.Status.OK).entity("Audio snimak je obrisan").build();*/
+    }
+    
+    //18. Dohvatanje svih mesta
+    @GET
+    @Path("mesto")
+    @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
+    public Response dohvatiMesta(){
+        try {
+            JMSContext context = connectionFactory.createContext();
+            JMSConsumer consumer = context.createConsumer(queueOdgovor);
+            JMSProducer producer = context.createProducer();
+            TextMessage txtMsg = context.createTextMessage();
+            txtMsg.setIntProperty("zahtev", 18);
+            producer.send(queueZahtev, txtMsg);
+            
+            String odgovor = ((TextMessage) consumer.receive()).getText();
+            
+            return Response.status(Response.Status.OK).entity(odgovor).build();
+        } catch (JMSException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Greska").build();
+        }
+        /*List<Mesto> mesta = em.createNamedQuery("Mesto.findAll", Mesto.class).getResultList();
+        return Response.status(Response.Status.OK).entity(new GenericEntity<List<Mesto>>(mesta){}).build();*/
+    
+    }
+    
+    //19. Dohvatanje svih korisnika
+    @GET
+    @Path("korisnik")
+    @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
+    public Response dohvatiKorisnike(){
+         try {
+            JMSContext context = connectionFactory.createContext();
+            JMSConsumer consumer = context.createConsumer(queueOdgovor);
+            JMSProducer producer = context.createProducer();
+            TextMessage txtMsg = context.createTextMessage();
+            txtMsg.setIntProperty("zahtev", 19);
+            producer.send(queueZahtev, txtMsg);
+            
+            String odgovor = ((TextMessage) consumer.receive()).getText();
+            
+            return Response.status(Response.Status.OK).entity(odgovor).build();
+        } catch (JMSException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Greska").build();
+        }
+        /*List<Korisnik> korisnici = em.createNamedQuery("Korisnik.findAll", Korisnik.class).getResultList();
+        return Response.status(Response.Status.OK).entity(new GenericEntity<List<Korisnik>>(korisnici){}).build();*/
+    
+    }
+    
+    //20. Dohvatanje svih kategorija
+    @GET
+    @Path("kategorija")
+    @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
+    public Response dohvatiKategorije(){
+         try {
+            JMSContext context = connectionFactory.createContext();
+            JMSConsumer consumer = context.createConsumer(queueOdgovor);
+            JMSProducer producer = context.createProducer();
+            TextMessage txtMsg = context.createTextMessage();
+            txtMsg.setIntProperty("zahtev", 20);
+            producer.send(queueZahtev, txtMsg);
+            
+            String odgovor = ((TextMessage) consumer.receive()).getText();
+            
+            return Response.status(Response.Status.OK).entity(odgovor).build();
+        } catch (JMSException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Greska").build();
+        }
+        /*List<Kategorija> kategorije = em.createNamedQuery("Kategorija.findAll", Kategorija.class).getResultList();
+        return Response.status(Response.Status.OK).entity(new GenericEntity<List<Kategorija>>(kategorije){}).build();*/
+    
+    }
+    
+    //21. Dohvatanje svih audio snimaka
+    @GET
+    @Path("audiosnimak")
+    @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
+    public Response dohvatiAudioSnimke(){
+         try {
+            JMSContext context = connectionFactory.createContext();
+            JMSConsumer consumer = context.createConsumer(queueOdgovor);
+            JMSProducer producer = context.createProducer();
+            TextMessage txtMsg = context.createTextMessage();
+            txtMsg.setIntProperty("zahtev", 21);
+            producer.send(queueZahtev, txtMsg);
+            
+            String odgovor = ((TextMessage) consumer.receive()).getText();
+            
+            return Response.status(Response.Status.OK).entity(odgovor).build();
+        } catch (JMSException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Greska").build();
+        }
+        /*List<Audiosnimak> audiosnimci = em.createNamedQuery("Audiosnimak.findAll", Audiosnimak.class).getResultList();
+        return Response.status(Response.Status.OK).entity(new GenericEntity<List<Audiosnimak>>(audiosnimci){}).build();*/
+    }
+    
+    //22. Dohvatanje kategorija za određeni audio snimak
+    @GET
+    @Path("kategorija/{idAud}")
+    @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
+    public Response dohvatiKategorijuZaOdredjeniAudioSnimak(@PathParam("idAud") int idAud) {
+         try {
+            JMSContext context = connectionFactory.createContext();
+            JMSConsumer consumer = context.createConsumer(queueOdgovor);
+            JMSProducer producer = context.createProducer();
+            TextMessage txtMsg = context.createTextMessage();
+            txtMsg.setIntProperty("zahtev", 22);
+            txtMsg.setIntProperty("IdAud", idAud);
+            producer.send(queueZahtev, txtMsg);
+            
+            String odgovor = ((TextMessage) consumer.receive()).getText();
+            
+            return Response.status(Response.Status.OK).entity(odgovor).build();
+        } catch (JMSException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Greska").build();
+        }
+       /* try {
+            List<Kategorija> kategorije = em.createQuery("SELECT p.idKat FROM Pripada p WHERE p.idAudSni.idAudSni = :idaud", Kategorija.class).setParameter("idaud", idAud).getResultList();
+            if (kategorije.isEmpty()) {
+                return Response.status(Response.Status.NOT_FOUND).entity("Nema kategorija.").build();
+            }
+
+            return Response.status(Response.Status.OK).entity(new GenericEntity<List<Kategorija>>(kategorije) {}).build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Došlo je do greške.").build();
+        }*/
+    }
+    
+    //23. . Dohvatanje svih paketa
+    @GET
+    @Path("paket")
+    @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
+    public Response dohvatiPakete(){
+         try {
+            JMSContext context = connectionFactory.createContext();
+            JMSConsumer consumer = context.createConsumer(queueOdgovor);
+            JMSProducer producer = context.createProducer();
+            TextMessage txtMsg = context.createTextMessage();
+            txtMsg.setIntProperty("zahtev", 23);
+            producer.send(queueZahtev, txtMsg);
+            
+            String odgovor = ((TextMessage) consumer.receive()).getText();
+            
+            return Response.status(Response.Status.OK).entity(odgovor).build();
+        } catch (JMSException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Greska").build();
+        }
+        /*List<Paket> paketi = em.createNamedQuery("Paket.findAll", Paket.class).getResultList();
+        return Response.status(Response.Status.OK).entity(new GenericEntity<List<Paket>>(paketi){}).build();*/
+    }
+    
+    //24. Dohvatanje svih pretplata za korisnika
+    @GET
+    @Path("pretplata/{idKor}")
+    @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
+     public Response dohvatiPretplate(@PathParam("idKor") int idKor){
+          try {
+            JMSContext context = connectionFactory.createContext();
+            JMSConsumer consumer = context.createConsumer(queueOdgovor);
+            JMSProducer producer = context.createProducer();
+            TextMessage txtMsg = context.createTextMessage();
+            txtMsg.setIntProperty("zahtev", 24);
+            txtMsg.setIntProperty("IdKor", idKor);
+            producer.send(queueZahtev, txtMsg);
+            
+            String odgovor = ((TextMessage) consumer.receive()).getText();
+            
+            return Response.status(Response.Status.OK).entity(odgovor).build();
+        } catch (JMSException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Greska").build();
+        }
+        /*try{ 
+            List<Pretplata> pretplate = em.createQuery("Select p From Pretplata p where p.idKor.idKor=:idkor", Pretplata.class).setParameter("idkor", idKor).getResultList();
+            if (pretplate.isEmpty()) {
+                return Response.status(Response.Status.NOT_FOUND).entity("Nema pretplata.").build();
+            }
+             return Response.status(Response.Status.OK).entity(new GenericEntity<List<Pretplata>>(pretplate){}).build();
+    
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Došlo je do greške.").build();
+        }  */
+    }
+     
+    //25. Dohvatanje svih slušanja za audio snimak
+    @GET
+    @Path("slusanja/{idAud}")
+    @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
+    public Response dohvatiSlusanjaZaAudioSnimak(@PathParam("idAud") int idAud) {
+         try {
+            JMSContext context = connectionFactory.createContext();
+            JMSConsumer consumer = context.createConsumer(queueOdgovor);
+            JMSProducer producer = context.createProducer();
+            TextMessage txtMsg = context.createTextMessage();
+            txtMsg.setIntProperty("zahtev", 25);
+            txtMsg.setIntProperty("IdAud", idAud);
+            producer.send(queueZahtev, txtMsg);
+            
+            String odgovor = ((TextMessage) consumer.receive()).getText();
+            
+            return Response.status(Response.Status.OK).entity(odgovor).build();
+        } catch (JMSException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Greska").build();
+        }
+        /*try {
+            List<Slusanje> slusanja = em.createQuery("SELECT s FROM Slusanje s WHERE s.idAudSni.idAudSni = :idaud", Slusanje.class).setParameter("idaud", idAud).getResultList();
+            if (slusanja.isEmpty()) {
+                return Response.status(Response.Status.NOT_FOUND).entity("Nema slusanja.").build();
+            }
+
+            return Response.status(Response.Status.OK).entity(new GenericEntity<List<Slusanje>>(slusanja) {}).build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Došlo je do greške.").build();
+        }*/
+    }
+    
+    //26.  Dohvatanje svih ocena za audio snimak
+    @GET
+    @Path("ocena/{idAud}")
+    @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
+    public Response dohvatiOcenuZaAudioSnimak(@PathParam("idAud") int idAud) {
+         try {
+            JMSContext context = connectionFactory.createContext();
+            JMSConsumer consumer = context.createConsumer(queueOdgovor);
+            JMSProducer producer = context.createProducer();
+            TextMessage txtMsg = context.createTextMessage();
+            txtMsg.setIntProperty("zahtev", 26);
+            txtMsg.setIntProperty("IdAud", idAud);
+            producer.send(queueZahtev, txtMsg);
+            
+            String odgovor = ((TextMessage) consumer.receive()).getText();
+            
+            return Response.status(Response.Status.OK).entity(odgovor).build();
+        } catch (JMSException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Greska").build();
+        }
+        /*try {
+            List<Ocena> ocene = em.createQuery("SELECT o FROM Ocena o WHERE o.idAudSni.idAudSni = :idaud", Ocena.class).setParameter("idaud", idAud).getResultList();
+            if (ocene.isEmpty()) {
+                return Response.status(Response.Status.NOT_FOUND).entity("Nema kategorija.").build();
+            }
+
+            return Response.status(Response.Status.OK).entity(new GenericEntity<List<Ocena>>(ocene) {}).build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Došlo je do greške.").build();
+        }*/
+    }
+    
+    //27. Dohvatanje liste omiljenih audio snimaka za korisnika
+    @GET
+    @Path("omiljeni/{idKor}")
+    @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
+    public Response dohvatiOmiljeneSnimkeZaKorisnika(@PathParam("idKor") int idKor) {
+         try {
+            JMSContext context = connectionFactory.createContext();
+            JMSConsumer consumer = context.createConsumer(queueOdgovor);
+            JMSProducer producer = context.createProducer();
+            TextMessage txtMsg = context.createTextMessage();
+            txtMsg.setIntProperty("zahtev", 27);
+            txtMsg.setIntProperty("IdKor", idKor);
+            producer.send(queueZahtev, txtMsg);
+            
+            String odgovor = ((TextMessage) consumer.receive()).getText();
+            
+            return Response.status(Response.Status.OK).entity(odgovor).build();
+        } catch (JMSException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Greska").build();
+        }
+       /* try {
+            List<Omiljenisnimak> omiljeni = em.createQuery("SELECT o FROM Omiljenisnimak o WHERE o.idKor.idKor = :idkor", Omiljenisnimak.class).setParameter("idkor", idKor).getResultList();
+            if (omiljeni.isEmpty()) {
+                return Response.status(Response.Status.NOT_FOUND).entity("Nema omljenih snimaka.").build();
+            }
+
+            return Response.status(Response.Status.OK).entity(new GenericEntity<List<Omiljenisnimak>>(omiljeni) {}).build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Došlo je do greške.").build();
+        }*/
+    }
+    

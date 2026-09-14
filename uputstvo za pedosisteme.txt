@@ -1,0 +1,11 @@
+za podsisteme:
+ubaci u libraries connector i java ee 8 api library
+dodas persistence unit rucno i generises entitetske klase
+dodaj ceo folder lib u kom se nalazi connector
+u build dodas:
+ <path id="classpath">
+    		<fileset dir="lib">
+      		    <include name="mysql-connector-j-9.1.0.jar"/>
+   		 </fileset>
+	</path>
+obavezno u persistence dodaj loziku jer je inace prazan string
